@@ -1,0 +1,388 @@
+<!doctype html>
+<html lang="it">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Carte — Mazzo casuale senza ripetizioni</title>
+  <style>
+    :root{
+      --bg: #0b0b0f;
+      --panel: #14161a;
+      --accent: #e60073;
+      --text: #eee;
+    }
+    body{
+      margin:0;
+      min-height:100vh;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      font-family: system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      background: linear-gradient(180deg, #060608 0%, #0f0f12 100%);
+      color:var(--text);
+      padding:24px;
+    }
+    .card-app{
+      width:100%;
+      max-width:820px;
+      background:var(--panel);
+      border-radius:12px;
+      box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+      padding:22px;
+      border: 1px solid rgba(230,6,115,0.08);
+    }
+    header{ display:flex; align-items:center; justify-content:space-between; gap:12px; }
+    h1{ margin:0; font-size:1.4rem; color:var(--accent); }
+    .controls{ display:flex; gap:8px; align-items:center; flex-wrap:wrap; }
+    button{
+      background:var(--accent);
+      color:white;
+      border:0;
+      padding:10px 16px;
+      border-radius:8px;
+      cursor:pointer;
+      font-weight:600;
+    }
+    button:disabled{ opacity:0.45; cursor:not-allowed; filter:grayscale(0.25); }
+    #card{
+      margin-top:18px;
+      min-height:140px;
+      padding:22px;
+      border-radius:10px;
+      border:1px solid rgba(255,255,255,0.03);
+      background: linear-gradient(180deg, rgba(255,255,255,0.02), rgba(0,0,0,0.08));
+      font-size:1.15rem;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      text-align:center;
+      line-height:1.4;
+    }
+    .meta{
+      margin-top:12px;
+      display:flex;
+      gap:12px;
+      align-items:center;
+      justify-content:space-between;
+      color:#ccc;
+      font-size:0.95rem;
+    }
+    textarea{
+      width:100%;
+      min-height:110px;
+      margin-top:12px;
+      background:#0b0b0d;
+      color:var(--text);
+      border:1px dashed rgba(255,255,255,0.04);
+      padding:10px;
+      border-radius:8px;
+      font-size:0.95rem;
+      resize:vertical;
+    }
+    .hint{ font-size:0.85rem; color:#bdbdbd; margin-top:8px; }
+  </style>
+</head>
+<body>
+  <div class="card-app" role="application" aria-label="Mazzo di carte casuali">
+    <header>
+      <h1>Mazzo — Estrazione casuale (no ripetizioni)</h1>
+      <div class="controls">
+        <button id="drawBtn">Pesca una carta</button>
+        <button id="resetBtn">Reset / Mescola</button>
+      </div>
+    </header>
+
+    <div id="card">Premi "Pesca una carta" per iniziare.</div>
+
+    <div class="meta">
+      <div id="remaining">Carte rimanenti: <strong>0</strong></div>
+      <div id="status">Stato: pronti</div>
+    </div>
+
+    <div style="margin-top:14px;">
+      <label for="importArea" style="font-weight:600">Incolla qui il mazzo personalizzato (una carta per riga)</label>
+      <textarea id="importArea" placeholder="Esempio:&#10;Carta 1 — sostituisci con il testo che desideri (assicurati che sia consensuale)&#10;Carta 2 — massaggia il partner per 2 minuti (consenso)"></textarea>
+      <div style="display:flex; gap:8px; margin-top:8px;">
+        <button id="importBtn">Importa mazzo dal testo</button>
+        <button id="clearBtn">Cancella area</button>
+      </div>
+      <div class="hint">Nota: l'importazione sovrascrive il mazzo corrente. Il sistema estrae in modo casuale senza ripetere una carta finché il mazzo non è esaurito. Puoi premere Reset per mescolare nuovamente.</div>
+      <div class="hint" style="color:#ffb3c9; margin-top:6px;">Attenzione: evita contenuti non-consensuali o illegali. L'uso del mazzo è sotto la tua responsabilità.</div>
+    </div>
+  </div>
+
+  <script>
+    // --- default (esempi neutri/placeholders) ---
+    const defaultCards = [
+      "Obbligalo/a a inginocchiarsi davanti a te e a eseguire ogni comando.",
+      "Posizione: prendilo/a da dietro mentre lo/la tieni per i capelli.",
+      "Sculaccialo/a 20 volte senza pietà.",
+      "Obbliga il partner a rimanere bendato e legato per 5 minuti.",
+      "Facesitting: siediti sulla sua faccia e non muoverti finché non ti implora.",
+      "Togli un indumento al partner usando solo la bocca.",
+      "Comando: masturba il partner ma fermati sempre prima che venga.",
+      "Punizione: tienilo/a con le mani dietro la schiena e usalo/a come vuoi.",
+      "Sfida: fallo/a gemere senza penetrare.",
+      "Obbliga il partner a dire 5 cose sporche mentre lo/la domini.",
+      "Posizione: cowgirl inversa, e ordina di non muoversi.",
+      "Sborra sul suo petto e obbligalo/a a massaggiarsela addosso.",
+      "Lecca (non succhiare se non richiesto) il partner finché non ti chiede di fermarti.",
+      "Obbliga il partner a servirti per 3 minuti.",
+      "Sfida: spoglialo/a lentamente senza usare le mani.",
+      "Obbliga il partner a succhiartelo/la profondamente senza interruzione.",
+      "Prendilo/a in piedi contro il muro, immobilizzandolo/a.",
+      "Sborra sul suo corpo e ordina di leccarsela da solo/a.",
+      "Facesitting: costringilo/a a bere tutto il tuo piacere.",
+      "Comando: obbedisci a ogni tocco.",
+      "Posizione: cucchiaio, ma con mano che stringe forte la gola se richiesta.",
+      "Obbliga il partner a guardarti mentre ti masturbi sopra di lui/lei.",
+      "Sfida: resisti 5 minuti senza toccare i genitali.",
+      "Comando: succhialo/leccala guardandolo/a negli occhi.",
+      "Obbliga il partner a stare legato e subire leccate ovunque.",
+      "Sborra sulla sua lingua.",
+      "Punizione: sculacciate finché non arrossa.",
+      "Posizione: seduto/a su una sedia, l’altro sopra come cavallo impazzito.",
+      "Sfida: fallo/a venire solo con la lingua.",
+      "Obbliga il partner a stare nudo e immobile mentre tu decidi.",
+      "Comando: toccati davanti a me senza pudore.",
+      "Facesitting con immobilizzazione delle mani.",
+      "Sborra sul suo culo e ordina di leccarla via.",
+      "Sfida: fallo/a godere senza mai baciarlo/a sulle labbra.",
+      "Obbliga il partner a ripetere 'sono tuo/a' mentre lo/la domini.",
+      "Posizione: piegato sul tavolo e preso con forza.",
+      "Comando: gemi ad alta voce finché non ti do io il permesso di smettere.",
+      "Sfida: resisti mentre vieni provocato/a.",
+      "Obbliga il partner a chiedere per ogni carezza.",
+      "Sborra sulla sua faccia senza colpire gli occhi.",
+      "Facesitting fino a totale sottomissione.",
+      "Posizione: cavalcata lenta, ma senza fermarsi finché non ordino.",
+      "Punizione: legalo/a e gioca con il corpo a piacere.",
+      "Comando: succhia finché non dico stop.",
+      "Obbliga il partner a spogliarsi lentamente per eccitarti.",
+      "Sfida: fallo/a eccitare con leccate improvvise.",
+      "Sborra sul ventre e spargila con la tua mano.",
+      "Posizione: da dietro sul divano, spingendolo/a avanti.",
+      "Comando: dimmi tre fantasie hard mentre ti tocco.",
+      "Sfida: resistere a 2 minuti di dominazione estrema.",
+      "Obbliga il partner a baciarti ovunque tranne sulle labbra.",
+      "Vestiti solo con la vestaglia e nuda sotto ed obbedisci per 3 minuti.",
+      "Fallo venire con le tette.",
+      "Comando: gemi forte per ogni colpo ricevuto.",
+      "Punizione: fallo/a stare in piedi nudo/a mentre lo/la osservi.",
+      "Sfida: provoca il partner solo con morsi e graffi.",
+      "Posizione: in piedi, gambe sollevate sulle tue spalle.",
+      "Obbliga il partner a guardarti mentre lo/la domini con toys.",
+      "Comando: succhiami guardandomi fisso negli occhi.",
+      "Sfida: fallo/a venire senza usare la penetrazione.",
+      "Obbliga il partner a ripetere ciò che gli/le dici per 5 minuti.",
+      "Sborra in gola e obbliga a inghiottire tutto.",
+      "Facesitting finché non geme di piacere o di resa.",
+      "Vestiti solo con il camice da farmacista e nuda sotto ed obbedisci per 3 minuti.",
+      "Sfida: resisti al piacere con le mani legate.",
+      "Obbliga il partner a chiedere 'per favore' per ogni gesto.",
+      "Punizione: fallo/a stare 5 minuti completamente nudo/a e scoperto/a.",
+      "Posizione: reverse cowgirl sfrenata.",
+      "Pecorina e sborrata sulla schiena.",
+      "Comando: toccami e dimmi cosa pensi davvero per 5 minuti.",
+      "Sfida: fallo/a impazzire con preliminari lunghi.",
+      "Obbliga il partner a servirti da schiavo/a totale per 5 minuti.",
+      "Facesitting con le mani bloccate dietro.",
+      "Comando: succhiami/leccami e fai dirty talking mentro lo fai.",
+      "Sfida: resistere senza orgasmo 10 minuti.",
+      "Posizione: in piedi, spinto/a al muro con forza.",
+      "Sborra sulla pancia e ordina di stenderla tutta.",
+      "Punizione: sculacciata ogni volta che geme.",
+      "Comando: gemi il mio nome mentre godi.",
+      "Sfida: fallo/a venire due volte di fila.",
+      "Obbliga il partner a restare fermo/a mentre giochi con lui/lei.",
+      "Facesitting fino a totale resa.",
+      "Non puoi usare le mani per 5 minuti.",
+      "Comando: succhialo/a senza mai staccarti.",
+      "Sfida: fallo/a implorare per avere di più.",
+      "Posizione: da dietro con mani che stringono i fianchi.",
+      "Sborra dove vuoi e ordina di pulire con la bocca.",
+      "Facesitting lento e torturante.",
+      "Sfida: fallo/a venire bendato/a senza sapere cosa fai.",
+      "Comando: succhia e gemi finché non dico stop.",
+      "Punizione: fallo/a rimanere nudo/a legato/a.",
+      "Posizione: a pecora, dominato/a totalmente.",
+      "Sfida: fallo/a godere più volte in 30 minuti.",
+      "Sborra in bocca e ordina di aprirla mostrando la lingua.",
+      "Comando: obbedisci senza fare domande per 5 minuti.",
+      "Punizione: restare in silenzio assoluto per 5 minuti.",
+      "Indossa solo calze a rete e resta inginocchiato/a.",
+      "Sussurrami un segreto erotico che non hai mai detto a nessuno.",
+      "Resta vestito/a con guanti lunghi e nulla altro.",
+      "Cammina lentamente con gli occhi chiusi fino a me.",
+      "Indossa una cintura legata in vita e resta nudo/a sotto.",
+      "Stai 2 minuti con le mani dietro la schiena.",
+      "Dimmi tre volte quanto appartieni al mio corpo.",
+      "Vestiti solo con una camicia abbottonata fino al collo.",
+      "Fatti trovare con un fiocco rosso legato al polso.",
+      "Fai sesso da ubriaca/o.",
+      "Obbligati a restare muto/a mentre ti tocco.",
+      "Indossa solo un cappotto e lascia che lo apra io.",
+      "Resta seduto/a su una sedia senza incrociare le gambe.",
+      "Parla con me senza mai usare il mio nome. Chi sbaglia paga un pegno a piacere del vincitore",
+      "Accarezza lentamente ma non toccare i genitali.",
+      "Resta bendato/a e dimmi cosa immagini sto facendo.",
+      "Vestiti solo con i miei boxer/slip.",
+      "Usa un sex toy a mia scelta.",
+      "Parlami delle tue ansie mentre ti tocco.",
+      "Preparati in biancheria scura e tacchi alti a spillo.",
+      "Stai in piedi davanti allo specchio e parlami di te.",
+      "Mostrami un punto del tuo corpo che vuoi che baci.",
+      "Vestiti con solo un lenzuolo legato come tunica.",
+      "scegli una carta dal mazzo di squillo e rispetta quello che esce senza dissentire.",
+      "fai sesso orale in un luogo pubblico alla prima occasione.",
+      "Sopporta per 3 minuti che ti tocchi in un luogo pubblico senza reagire.",
+      "Resta seduto/a in silenzio mentre io mi spoglio.",
+      "Indossa un cappello e nulla altro.",
+      "Scrivimi un biglietto erotico e nascondilo sul corpo.",
+      "Toccami solo senza scopare nè fare sesso orale per 2 minuti.",
+      "Sorridimi mentre ti spogli lentamente.",
+      "Resta inginocchiato/a finché non ti do il permesso di alzarti.",
+      "Accarezzami per 3 minuti.",
+      "Indossa solo un foulard sugli occhi.",
+      "Tieniti un cuscino tra le gambe e non lasciarlo cadere per 3 minuti.",
+      "Dimmi ad alta voce la tua fantasia più pericolosa.",
+      "Indossa i miei pantaloni e resta nudo/a sopra.",
+      "Obbligati a non sorridere mentre ti bacio ovunque.",
+      "Raccontami un sogno erotico come se fosse reale.",
+      "Resta bendato/a e descrivi cosa senti al tatto.",
+      "Vestiti elegante e spogliati pezzo per pezzo davanti a me.",
+      "Indossa solo un bracciale al polso.",
+      "Resta seduto/a con gambe aperte e mani dietro per 5 minuti e non reagire a quel che faccio.",
+      "Scopa davanti allo specchio.",
+      "Vestiti elegante e scopa senza spogliarti.",
+      "Mantieni un bicchiere d’acqua in mano, nudo/a, mentre ti provoco per 5 minuti.",
+      "Guardami senza parlare e sorridi.",
+      "Obbligati a chiedere ogni carezza.",
+      "Preparati con un abito elegante e niente sotto.",
+      "Indossa solo una camicia aperta.",
+      "Resta inginocchiato/a con gli occhi chiusi.",
+      "Raccontami cosa ti eccita di più in me.",
+      "Scrivimi un messaggio erotico davanti a me.",
+      "Dimmi tre frasi sporche che non hai mai detto.",
+      "Fatti trovare sdraiato/a con mani dietro la testa e rimani immobile per 3 minuti qualsiasi cosa faccia.",
+      "Indossa un cappello e una cravatta.",
+      "Resta nudo/a dietro la porta ad aspettarmi.",
+      "Raccontami un desiderio erotico che non realizzeresti mai mentre ti tocco.",
+      "Indossa solo un asciugamano attorno ai fianchi.",
+      "Indossa solo una cintura e nient’altro.",
+      "Toccati davanti a me ma fermati quando alzo la mano.",
+      "Resta inginocchiato/a sul letto con la testa bassa.",
+      "Raccontami la tua prima fantasia erotica mentre ti tocco.",
+      "Indossa una camicia sbottonata senza nulla sotto.",
+      "Obbligati a rimanere immobile mentre ti sfioro il collo.",
+      "Sussurrami cosa ti fa perdere il controllo.",
+      "Obbligati a non ridere per cinque minuti mentre ti provo.",
+      "Raccontami il tuo peggior imbarazzo che ti eccita.",
+    ];
+
+    // App elements
+    const cardDiv = document.getElementById('card');
+    const drawBtn = document.getElementById('drawBtn');
+    const resetBtn = document.getElementById('resetBtn');
+    const remainingEl = document.querySelector('#remaining strong');
+    const statusEl = document.getElementById('status');
+    const importArea = document.getElementById('importArea');
+    const importBtn = document.getElementById('importBtn');
+    const clearBtn = document.getElementById('clearBtn');
+
+    // Current deck (shuffled). We pop from deck to avoid repeats until empty.
+    let deck = [];
+
+    // Fisher-Yates shuffle
+    function shuffleArray(arr){
+      const a = arr.slice(); // non-destructive copy
+      for(let i = a.length - 1; i > 0; i--){
+        const j = Math.floor(Math.random() * (i + 1));
+        [a[i], a[j]] = [a[j], a[i]];
+      }
+      return a;
+    }
+
+    function initDeck(cards){
+      if(!Array.isArray(cards) || cards.length === 0){
+        deck = [];
+        updateUI();
+        return;
+      }
+      deck = shuffleArray(cards);
+      updateUI();
+      statusEl.textContent = 'Mazzo mescolato';
+      drawBtn.disabled = false;
+    }
+
+    function drawCard(){
+      if(deck.length === 0){
+        cardDiv.textContent = 'Mazzo esaurito. Premi "Reset / Mescola" o importa un nuovo mazzo.';
+        drawBtn.disabled = true;
+        statusEl.textContent = 'Esaurito';
+        remainingEl.textContent = '0';
+        return;
+      }
+      const next = deck.pop(); // no repeat until deck empty
+      // show the card (plain text)
+      cardDiv.textContent = next;
+      remainingEl.textContent = String(deck.length);
+      statusEl.textContent = 'Carta pescata';
+      if(deck.length === 0){
+        statusEl.textContent = 'Mazzo esaurito';
+        drawBtn.disabled = true;
+      }
+    }
+
+    function resetDeck(){
+      // reset to defaultCards (or you might prefer to keep the imported list)
+      initDeck(currentCards());
+    }
+
+    function currentCards(){
+      // If user has text in importArea, prefer it; otherwise default
+      const raw = importArea.value.trim();
+      if(raw.length === 0) return defaultCards.slice();
+      // parse lines (skip empty lines)
+      return raw.split(/\r?\n/).map(s => s.trim()).filter(Boolean);
+    }
+
+    function updateUI(){
+      remainingEl.textContent = String(deck.length);
+      if(deck.length === 0){
+        drawBtn.disabled = true;
+        if(cardDiv.textContent.trim() === '' || cardDiv.textContent.includes('Premi')) {
+          cardDiv.textContent = 'Mazzo vuoto. Importa o premi Reset.';
+        }
+      } else {
+        drawBtn.disabled = false;
+      }
+    }
+
+    // Import handler
+    importBtn.addEventListener('click', () => {
+      const parsed = currentCards();
+      if(parsed.length === 0){
+        alert('Nessuna carta trovata nell\'area di importazione. Inserisci almeno una linea di testo per carta.');
+        return;
+      }
+      initDeck(parsed);
+      cardDiv.textContent = 'Mazzo importato e mescolato. Premi "Pesca una carta".';
+    });
+
+    clearBtn.addEventListener('click', () => {
+      if(confirm('Cancellare il contenuto dell\'area di importazione?')) importArea.value = '';
+    });
+
+    drawBtn.addEventListener('click', drawCard);
+    resetBtn.addEventListener('click', () => {
+      // re-initialize using the currently visible source (importArea or default)
+      initDeck(currentCards());
+      cardDiv.textContent = 'Mazzo mescolato di nuovo. Premi "Pesca una carta".';
+    });
+
+    // initialize on load
+    initDeck(defaultCards);
+  </script>
+</body>
+</html>
